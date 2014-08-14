@@ -1,4 +1,4 @@
-package deploy.worker
+package com.baidu.akka.deploy.worker
 
 import akka.actor._
 import com.typesafe.config.Config
