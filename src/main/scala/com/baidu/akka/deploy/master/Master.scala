@@ -12,7 +12,7 @@ import com.baidu.akka.deploy.DeployMessages.RegisterWorker
 /**
  * Created by edwardsbean on 14-8-14.
  */
-class Master(host: String, port: Int, conf: Config) extends Actor{
+class Master(host: String, port: Int, conf: Config) extends Actor with ActorLogging{
   val masterUrl = host + ":" + port
   //
   val workers = new HashSet[WorkerInfo]
@@ -24,7 +24,7 @@ class Master(host: String, port: Int, conf: Config) extends Actor{
   var state = RecoveryState.ALIVE
 
   override def preStart(){
-    println("master starting at " + context.self.path)
+    log.debug("master starting at " + context.self.path)
 //    context.system.scheduler.schedule(0 millis, WORKER_TIMEOUT millis, self, CheckForWorkerTimeOut)
 
     //保存master信息，以便故障恢复
@@ -35,9 +35,7 @@ class Master(host: String, port: Int, conf: Config) extends Actor{
     //worker请求注册上来
     case RegisterWorker(id, workerHost, workerPort) =>
     {
-      println("get message from worker ")
-//      logInfo("Registering worker %s:%d with %d cores, %s RAM".format(
-//        workerHost, workerPort, cores, Utils.megabytesToString(memory)))
+      log.info("Registering worker " + workerHost)
       if (state == RecoveryState.STANDBY) {
         // ignore, don't send response
       } else if (idToWorker.contains(id)) {
@@ -45,7 +43,7 @@ class Master(host: String, port: Int, conf: Config) extends Actor{
       } else {
         val worker = new WorkerInfo(id, workerHost, workerPort, sender)
         if (registerWorker(worker)) {
-          println("相应注册请求")
+          log.debug("响应注册请求")
           sender ! RegisteredWorker(masterUrl)
           //do something
           schedule()
@@ -63,7 +61,7 @@ class Master(host: String, port: Int, conf: Config) extends Actor{
     case Heartbeat(workerId) => {
       idToWorker.get(workerId) match {
         case Some(workerInfo) =>
-          println("worker " + workerInfo.host + "汇报心跳")
+          log.debug("worker " + workerInfo.host + "汇报心跳")
           workerInfo.lastHeartbeat = System.currentTimeMillis()
         case None =>
 //          logWarning("Got heartbeat from unregistered worker " + workerId)
@@ -89,13 +87,13 @@ class Master(host: String, port: Int, conf: Config) extends Actor{
     workers += worker
     idToWorker(worker.id) = worker
     addressToWorker(workerAddress) = worker
-    println("worker " + worker.host + "注册到master")
+    log.debug("worker " + worker.host + "注册到master")
     true
   }
 
   //do something
   def schedule(){
-      println("开始调度任务")
+      log.debug("开始调度任务")
   }
   def removeWorker(worker: WorkerInfo) {
     //    logInfo("Removing worker " + worker.id + " on " + worker.host + ":" + worker.port)

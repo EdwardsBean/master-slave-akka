@@ -18,7 +18,7 @@ class Worker(host: String,
              conf: Config,
              actorSystemName: String,
              actorName: String
-              ) extends Actor {
+              ) extends Actor with ActorLogging{
 
   import context.dispatcher
 
@@ -59,7 +59,7 @@ class Worker(host: String,
   def receive = {
     //一旦注册成功，master会发送RegisteredWorker消息过来。
     case RegisteredWorker(masterUrl) =>
-      println("注册成功，开始发送心跳包")
+      log.debug("注册成功，开始发送心跳包")
       //logInfo("Successfully registered with master " + masterUrl)
       registered = true
       connected = true
@@ -68,7 +68,7 @@ class Worker(host: String,
 
     //发送心跳包
     case SendHeartbeat =>
-      println("发送心跳包")
+      log.debug("发送心跳包")
       if (connected) {
         master ! Heartbeat(workerId)
       }
@@ -84,8 +84,7 @@ class Worker(host: String,
 
   def tryRegisterWithMaster() {
     val actor = context.actorSelection(activeMasterUrl)
-    println("尝试连接到master " + activeMasterUrl)
-//    actor ! RegisterWorker(workerId, host, port)
+    log.debug("尝试连接到master " + activeMasterUrl)
     actor ! RegisterWorker(workerId, host, port)
     master = actor
   }
@@ -102,7 +101,7 @@ object Worker {
     val port = conf.getConfig("worker").getInt("port")
 
     val actorSystem = ActorSystem("edwardsWorker", conf)
-    val actor = actorSystem.actorOf(Props(classOf[Worker],
+    actorSystem.actorOf(Props(classOf[Worker],
       host,
       port,
       conf,
