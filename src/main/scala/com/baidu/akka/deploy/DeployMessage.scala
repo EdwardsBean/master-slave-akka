@@ -16,9 +16,11 @@ object DeployMessages {
     assert(host.indexOf(':') != -1, "Required hostname")
     assert(port > 0)
   }
-  case class RegisteredWorker(masterUrl: String, masterWebUiUrl: String) extends DeployMessage
+  case class RegisteredWorker(masterUrl: String) extends DeployMessage
 
   case object SendHeartbeat
 
   case class Heartbeat(workerId: String) extends DeployMessage
+
+  case class RegisterWorkerFailed(message: String) extends DeployMessage
 }
