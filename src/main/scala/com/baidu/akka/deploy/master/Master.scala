@@ -1,18 +1,18 @@
 package com.baidu.akka.deploy.master
 
-import akka.actor.{Address, Actor}
-import com.typesafe.config.Config
-import akka.actor.Actor.Receive
-import com.baidu.akka.deploy.DeployMessages.{Heartbeat, RegisteredWorker, RegisterWorkerFailed, RegisterWorker}
+import akka.actor._
+import com.typesafe.config.{ConfigFactory, Config}
 import scala.collection.mutable.{HashMap,HashSet}
+import com.baidu.akka.deploy.DeployMessages.RegisterWorkerFailed
+import scala.Some
+import com.baidu.akka.deploy.DeployMessages.Heartbeat
+import com.baidu.akka.deploy.DeployMessages.RegisteredWorker
+import com.baidu.akka.deploy.DeployMessages.RegisterWorker
 
 /**
  * Created by edwardsbean on 14-8-14.
  */
-class Master(conf: Config,
-             host: String,
-             port: Int) extends Actor{
-  val WORKER_TIMEOUT = conf.getLong("worker.timeout") * 1000
+class Master(host: String, port: Int, conf: Config) extends Actor{
   val masterUrl = host + ":" + port
   //
   val workers = new HashSet[WorkerInfo]
@@ -24,7 +24,7 @@ class Master(conf: Config,
   var state = RecoveryState.ALIVE
 
   override def preStart(){
-    println("master starting at " + masterUrl)
+    println("master starting at " + context.self.path)
 //    context.system.scheduler.schedule(0 millis, WORKER_TIMEOUT millis, self, CheckForWorkerTimeOut)
 
     //保存master信息，以便故障恢复
@@ -35,6 +35,7 @@ class Master(conf: Config,
     //worker请求注册上来
     case RegisterWorker(id, workerHost, workerPort) =>
     {
+      println("get message from worker ")
 //      logInfo("Registering worker %s:%d with %d cores, %s RAM".format(
 //        workerHost, workerPort, cores, Utils.megabytesToString(memory)))
       if (state == RecoveryState.STANDBY) {
@@ -44,6 +45,7 @@ class Master(conf: Config,
       } else {
         val worker = new WorkerInfo(id, workerHost, workerPort, sender)
         if (registerWorker(worker)) {
+          println("相应注册请求")
           sender ! RegisteredWorker(masterUrl)
           //do something
           schedule()
@@ -101,4 +103,22 @@ class Master(conf: Config,
     idToWorker -= worker.id
     addressToWorker -= worker.actor.path.address
   }
+}
+
+
+
+
+object Master {
+  val systemName = "edwardsbeanCluster"
+  private val actorName = "Master"
+
+  def main(argStrings: Array[String]) {
+    val conf = ConfigFactory.load("master")
+    val host = conf.getConfig("master").getString("host")
+    val port = conf.getConfig("master").getInt("port")
+    val actorSystem = ActorSystem(systemName,conf)
+    actorSystem.actorOf(Props(classOf[Master],host,port,conf),actorName)
+//    actorSystem.awaitTermination()
+  }
+
 }

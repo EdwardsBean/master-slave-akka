@@ -13,7 +13,7 @@ object DeployMessages {
                              port: Int)
     extends DeployMessage {
     //检查master的地址
-    assert(host.indexOf(':') != -1, "Required hostname")
+//    assert(host.indexOf(':') != -1, "Required hostname")
     assert(port > 0)
   }
   case class RegisteredWorker(masterUrl: String) extends DeployMessage
