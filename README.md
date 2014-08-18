@@ -1,3 +1,3 @@
 master-slave-akka
 =================
-This project is a akka remote communication model,reference from apache spark.
+This project is a akka remote communication model example,reference from apache spark.
