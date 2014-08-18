@@ -24,7 +24,7 @@ class Master(host: String, port: Int, conf: Config) extends Actor with ActorLogg
   var state = RecoveryState.ALIVE
 
   override def preStart(){
-    log.debug("master starting at " + context.self.path)
+    log.info("master starting at " + context.self.path)
 //    context.system.scheduler.schedule(0 millis, WORKER_TIMEOUT millis, self, CheckForWorkerTimeOut)
 
     //保存master信息，以便故障恢复
@@ -43,14 +43,13 @@ class Master(host: String, port: Int, conf: Config) extends Actor with ActorLogg
       } else {
         val worker = new WorkerInfo(id, workerHost, workerPort, sender)
         if (registerWorker(worker)) {
-          log.debug("响应注册请求")
           sender ! RegisteredWorker(masterUrl)
           //do something
           schedule()
         } else {
           val workerAddress = worker.actor.path.address
-//          logWarning("Worker registration failed. Attempted to re-register worker at same " +
-//            "address: " + workerAddress)
+          log.warning("Worker registration failed. Attempted to re-register worker at same " +
+            "address: " + workerAddress)
           sender ! RegisterWorkerFailed("Attempted to re-register worker at same address: "
             + workerAddress)
         }
@@ -61,10 +60,10 @@ class Master(host: String, port: Int, conf: Config) extends Actor with ActorLogg
     case Heartbeat(workerId) => {
       idToWorker.get(workerId) match {
         case Some(workerInfo) =>
-          log.debug("worker " + workerInfo.host + "汇报心跳")
+          log.debug("Got heartbeat from worker " + workerId)
           workerInfo.lastHeartbeat = System.currentTimeMillis()
         case None =>
-//          logWarning("Got heartbeat from unregistered worker " + workerId)
+          log.warning("Got heartbeat from unregistered worker " + workerId)
       }
     }
   }
@@ -79,7 +78,7 @@ class Master(host: String, port: Int, conf: Config) extends Actor with ActorLogg
         // The old worker must thus be dead, so we will remove it and accept the new worker.
         removeWorker(oldWorker)
       } else {
-//        logInfo("Attempted to re-register worker at same address: " + workerAddress)
+        log.info("Attempted to re-register worker at same address: " + workerAddress)
         return false
       }
     }
@@ -87,16 +86,15 @@ class Master(host: String, port: Int, conf: Config) extends Actor with ActorLogg
     workers += worker
     idToWorker(worker.id) = worker
     addressToWorker(workerAddress) = worker
-    log.debug("worker " + worker.host + "注册到master")
     true
   }
 
   //do something
   def schedule(){
-      log.debug("开始调度任务")
+      log.debug("begin do something")
   }
   def removeWorker(worker: WorkerInfo) {
-    //    logInfo("Removing worker " + worker.id + " on " + worker.host + ":" + worker.port)
+        log.info("Removing worker " + worker.id + " on " + worker.host + ":" + worker.port)
     worker.setState(WorkerState.DEAD)
     idToWorker -= worker.id
     addressToWorker -= worker.actor.path.address

@@ -39,11 +39,12 @@ class Worker(host: String,
 
   //master相关可能会变，所以用变量可修改
   var master: ActorSelection = null
+  //akka address
   var masterAddress: Address = null
+  //host:port
   var activeMasterUrl: String = ""
-  //为什么要同步呢
-  @volatile var registered = false
-  @volatile var connected = false
+  var registered = false
+  var connected = false
   var registrationRetryTimer: Option[Cancellable] = None
 
   override def preStart(): Unit = {
@@ -56,19 +57,20 @@ class Worker(host: String,
 
   }
 
+
+
   def receive = {
     //一旦注册成功，master会发送RegisteredWorker消息过来。
     case RegisteredWorker(masterUrl) =>
-      log.debug("注册成功，开始发送心跳包")
-      //logInfo("Successfully registered with master " + masterUrl)
+      log.info("Successfully registered with master " + masterUrl)
+      changeMaster(masterUrl)
       registered = true
-      connected = true
       //和master通信成功之后，定期发送心跳包
       context.system.scheduler.schedule(0 millis, HEARTBEAT_MILLIS millis, self, SendHeartbeat)
 
     //发送心跳包
     case SendHeartbeat =>
-      log.debug("发送心跳包")
+      log.debug("Sending heartbeat message")
       if (connected) {
         master ! Heartbeat(workerId)
       }
@@ -84,9 +86,16 @@ class Worker(host: String,
 
   def tryRegisterWithMaster() {
     val actor = context.actorSelection(activeMasterUrl)
-    log.debug("尝试连接到master " + activeMasterUrl)
+    log.debug("Try registering to master " + activeMasterUrl)
     actor ! RegisterWorker(workerId, host, port)
     master = actor
+  }
+  def changeMaster(url: String) = {
+    activeMasterUrl = url
+    val _host_port = activeMasterUrl.split(":")
+    master = context.actorSelection(activeMasterUrl)
+    masterAddress = Address("akka.tcp", Master.systemName, _host_port(0),_host_port(1).toInt)
+    connected = true
   }
 
   def generateWorkerId(): String = {
